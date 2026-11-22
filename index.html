@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Запись к врачу</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #0E9F8E; --accent-dark: #0B7D70; --ink: #14231F; --muted: #5F706B; --bg: #F2F7F6; --line: #D8E4E1; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Manrope', system-ui, sans-serif; background: var(--bg); color: var(--ink); padding-bottom: 24px; }
+  button, input { font-family: inherit; }
+  button { cursor: pointer; }
+  .hero { margin: 14px 16px 0; border-radius: 22px; background: linear-gradient(135deg, var(--accent), #4CC9B5); padding: 18px; color: #fff; position: relative; overflow: hidden; min-height: 130px; }
+  .hero .tag { background: rgba(255,255,255,.25); font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px; }
+  .hero b { display: block; font-size: 22px; font-weight: 800; margin: 8px 0 6px; max-width: 210px; line-height: 1.15; }
+  .hero p { margin: 0; font-size: 13px; max-width: 210px; line-height: 1.35; }
+  .hero svg { position: absolute; right: -14px; bottom: -14px; opacity: .9; }
+  .chips { display: flex; gap: 8px; padding: 16px 16px 10px; overflow-x: auto; }
+  .chip { flex: none; min-height: 44px; padding: 0 18px; border-radius: 22px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-size: 14px; font-weight: 700; }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .list { padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card { display: flex; gap: 12px; background: #fff; border-radius: 20px; padding: 12px; align-items: center; }
+  .ico { flex: none; width: 56px; height: 56px; border-radius: 16px; background: #DDF3EF; display: flex; align-items: center; justify-content: center; }
+  .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .name { font-size: 15px; font-weight: 800; }
+  .desc { font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; gap: 8px; }
+  .price { font-size: 15px; font-weight: 800; }
+  .price small { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
+  .book { min-height: 44px; padding: 0 16px; border-radius: 14px; border: none; background: var(--accent); color: #fff; font-size: 14px; font-weight: 800; }
+  .foot { margin: 20px 16px 0; font-size: 12px; color: var(--muted); line-height: 1.5; text-align: center; }
+
+  .bg { position: fixed; inset: 0; background: rgba(20,35,31,.5); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20; }
+  .bg.open { opacity: 1; pointer-events: auto; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 94vh; background: #fff; border-radius: 24px 24px 0 0; display: flex; flex-direction: column; transform: translateY(100%); transition: transform .32s cubic-bezier(.2,.8,.2,1); }
+  .bg.open .sheet { transform: none; }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: #CBD9D6; margin: 8px auto 0; flex: none; }
+  .head { display: flex; gap: 12px; align-items: center; padding: 12px 18px 8px; flex: none; }
+  .head .t { flex: 1; min-width: 0; }
+  .head .t b { display: block; font-size: 18px; font-weight: 800; }
+  .head .t span { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .x { width: 44px; height: 44px; border-radius: 22px; border: none; background: var(--bg); font-size: 18px; color: var(--ink); flex: none; }
+  .body { flex: 1; overflow-y: auto; padding: 4px 18px 12px; display: flex; flex-direction: column; gap: 16px; }
+  .body h3 { margin: 0 0 8px; font-size: 14px; font-weight: 800; }
+  .doc { width: 100%; min-height: 56px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 8px 14px; border-radius: 14px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); text-align: left; margin-bottom: 6px; }
+  .doc b { font-size: 14px; font-weight: 800; } .doc span { font-size: 12px; color: var(--muted); }
+  .doc.on, .slot.on, .day.on { border-color: var(--accent); background: #E6F6F3; }
+  .days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .day { flex: none; width: 58px; min-height: 66px; border-radius: 14px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .day small { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; } .day b { font-size: 17px; font-weight: 800; }
+  .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .slot { min-height: 46px; border-radius: 12px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); font-size: 14px; font-weight: 700; }
+  .slot:disabled { opacity: .4; text-decoration: line-through; cursor: default; }
+  .fld { width: 100%; min-height: 48px; border-radius: 14px; border: 1.5px solid var(--line); padding: 0 14px; font-size: 15px; color: var(--ink); background: #fff; margin-bottom: 8px; }
+  .fld:focus { outline: none; border-color: var(--accent); }
+  .fld.bad { border-color: #D9534F; }
+  .foot2 { flex: none; padding: 10px 18px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid #E5EEEC; display: flex; flex-direction: column; gap: 8px; }
+  .sum { font-size: 13px; color: var(--muted); line-height: 1.4; min-height: 18px; }
+  .go { min-height: 54px; border-radius: 16px; border: none; background: var(--accent); color: #fff; font-size: 16px; font-weight: 800; }
+  .go:disabled { background: #B7CCC8; }
+
+  .flash { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: rgba(14,159,142,.92); }
+  .flash.go { display: flex; }
+  .flash .ok { width: 104px; height: 104px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; transform: scale(0); animation: pop .5s cubic-bezier(.3,1.6,.5,1) forwards; }
+  .flash path { stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw .35s ease-out .3s forwards; }
+  @keyframes pop { to { transform: scale(1); } } @keyframes draw { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { .sheet, .bg { transition: none; } }
+</style>
+</head>
+<body>
+<div class="hero">
+  <svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true"><circle cx="85" cy="85" r="62" fill="#fff" opacity=".18"/><rect x="62" y="38" width="46" height="94" rx="12" fill="#fff"/><rect x="38" y="62" width="94" height="46" rx="12" fill="#fff"/></svg>
+  <span class="tag">Запись онлайн без звонков</span>
+  <b id="clinicName">Клиника</b>
+  <p id="clinicHours"></p>
+</div>
+<div class="chips" id="chips"></div>
+<div class="list" id="list"></div>
+<div class="foot" id="foot"></div>
+
+<div class="bg" id="bg" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+    <div class="grab"></div>
+    <div class="head" id="head"></div>
+    <div class="body" id="body"></div>
+    <div class="foot2"><div class="sum" id="sum"></div><button class="go" id="go" disabled>Записаться</button></div>
+  </div>
+</div>
+<div class="flash" id="flash" aria-hidden="true"><div class="ok"><svg width="56" height="56" viewBox="0 0 56 56"><path d="M12 29 L24 41 L45 16" fill="none" stroke="#0E9F8E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+
+const ICONS = {
+  doc:   '<path d="M20 8v24M8 20h24" stroke="#0E9F8E" stroke-width="7" stroke-linecap="round"/>',
+  heart: '<path d="M20 33 C6 23 7 11 14 11 C17 11 19 13 20 15 C21 13 23 11 26 11 C33 11 34 23 20 33Z" fill="#E4572E"/>',
+  brain: '<circle cx="14" cy="17" r="7" fill="#7C6AD6"/><circle cx="26" cy="17" r="7" fill="#9A8AE8"/><circle cx="20" cy="26" r="7" fill="#7C6AD6"/>',
+  wave:  '<path d="M4 20 Q9 8 14 20 T24 20 T36 20" fill="none" stroke="#2F7FD3" stroke-width="4" stroke-linecap="round"/>',
+  drop:  '<path d="M20 6 C20 6 8 19 8 26 A12 12 0 0 0 32 26 C32 19 20 6 20 6Z" fill="#D9363E"/>'
+};
+const icon = k => '<svg width="40" height="40" viewBox="0 0 40 40">' + (ICONS[k] || ICONS.doc) + '</svg>';
+const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+const MON = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+let data = null, cat = 'Все', sel = null, sending = false;
+
+const fmt = n => n.toLocaleString('ru-RU') + ' ' + data.currency;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const doctor = id => data.doctors.find(d => d.id === id);
+const service = id => data.services.find(s => s.id === id);
+const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+function nextDays() {           // 7 ближайших дней без воскресенья
+  const out = [], d = new Date();
+  while (out.length < 7) { if (d.getDay() !== 0) out.push(new Date(d)); d.setDate(d.getDate() + 1); }
+  return out;
+}
+// Для демо «занятые» окна считаем по дате и времени, чтобы выглядело как настоящее расписание.
+function busy(docId, date, time) {
+  let h = 0; for (const ch of docId + date + time) h = (h * 31 + ch.charCodeAt(0)) % 7;
+  return h === 0;
+}
+function pastToday(date, time) {
+  if (date !== iso(new Date())) return false;
+  const n = new Date(); return time <= String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0');
+}
+
+function renderHome() {
+  document.getElementById('clinicName').textContent = data.clinic;
+  document.getElementById('clinicHours').textContent = data.hours + '. ' + data.address;
+  document.getElementById('foot').innerHTML = esc(data.address) + '<br>' + esc(data.phone);
+  const cats = ['Все', ...new Set(data.services.map(s => s.cat))];
+  document.getElementById('chips').innerHTML = cats.map(c => '<button class="chip' + (c === cat ? ' on' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>').join('');
+  document.getElementById('list').innerHTML = data.services.filter(s => cat === 'Все' || s.cat === cat).map(s =>
+    '<div class="card"><div class="ico">' + icon(s.icon) + '</div><div class="info"><span class="name">' + esc(s.name) + '</span><span class="desc">' + esc(s.desc) + '</span>' +
+    '<div class="row"><span class="price">' + fmt(s.price) + '<small>' + s.duration + ' мин</small></span><button class="book" data-book="' + s.id + '">Записаться</button></div></div></div>').join('');
+}
+
+function openBooking(id) {
+  const s = service(id);
+  const prev = sel && sel.name ? { name: sel.name, phone: sel.phone } : { name: '', phone: '' };
+  sel = { sid: id, did: s.doctors.length === 1 ? s.doctors[0] : null, date: null, time: null, ...prev };
+  document.getElementById('head').innerHTML = '<div class="t"><b id="sTitle">' + esc(s.name) + '</b><span>' + s.duration + ' мин · ' + fmt(s.price) + '</span></div><button class="x" aria-label="Закрыть" data-close>✕</button>';
+  renderBody();
+  const bg = document.getElementById('bg'); bg.classList.add('open'); bg.setAttribute('aria-hidden', 'false');
+  document.getElementById('body').scrollTop = 0;
+}
+function closeBooking() { const bg = document.getElementById('bg'); bg.classList.remove('open'); bg.setAttribute('aria-hidden', 'true'); }
+
+function renderBody() {
+  const s = service(sel.sid), body = document.getElementById('body'), sc = body.scrollTop;
+  let h = '';
+  if (s.doctors.length > 1) {
+    h += '<div><h3>Врач</h3>' + s.doctors.map(id => { const d = doctor(id);
+      return '<button class="doc' + (sel.did === id ? ' on' : '') + '" data-doc="' + id + '"><b>' + esc(d.name) + '</b><span>' + esc(d.spec) + ' · ' + esc(d.exp) + '</span></button>'; }).join('') + '</div>';
+  } else {
+    const d = doctor(s.doctors[0]);
+    h += '<div><h3>Врач</h3><div class="doc on"><b>' + esc(d.name) + '</b><span>' + esc(d.spec) + ' · ' + esc(d.exp) + '</span></div></div>';
+  }
+  h += '<div><h3>Дата</h3><div class="days">' + nextDays().map(d => { const k = iso(d);
+    return '<button class="day' + (sel.date === k ? ' on' : '') + '" data-day="' + k + '"><small>' + DOW[d.getDay()] + '</small><b>' + d.getDate() + '</b></button>'; }).join('') + '</div></div>';
+  if (sel.did && sel.date) {
+    h += '<div><h3>Время</h3><div class="slots">' + doctor(sel.did).slots.map(t => {
+      const off = busy(sel.did, sel.date, t) || pastToday(sel.date, t);
+      return '<button class="slot' + (sel.time === t ? ' on' : '') + '" data-time="' + t + '"' + (off ? ' disabled' : '') + '>' + t + '</button>'; }).join('') + '</div></div>';
+  }
+  h += '<div><h3>Ваши данные</h3><input class="fld" id="fName" placeholder="Имя и фамилия" autocomplete="name" maxlength="60" value="' + esc(sel.name) + '">' +
+       '<input class="fld" id="fPhone" type="tel" inputmode="tel" placeholder="+998 90 123-45-67" autocomplete="tel" maxlength="20" value="' + esc(sel.phone) + '"></div>';
+  body.innerHTML = h; body.scrollTop = sc;
+  updateFoot();
+}
+
+function validPhone(p) { return /^\+?[\d\s()-]{9,20}$/.test(p) && p.replace(/\D/g, '').length >= 9; }
+function updateFoot() {
+  const ready = sel.did && sel.date && sel.time && sel.name.trim().length >= 2 && validPhone(sel.phone.trim());
+  const dt = sel.date ? new Date(sel.date + 'T00:00:00') : null;
+  document.getElementById('sum').textContent = sel.did && sel.date && sel.time
+    ? doctor(sel.did).name + ' · ' + dt.getDate() + ' ' + MON[dt.getMonth()] + ' в ' + sel.time
+    : 'Выберите врача, дату и время';
+  document.getElementById('go').disabled = !ready || sending;
+}
+
+document.addEventListener('input', e => {
+  if (!sel) return;
+  if (e.target.id === 'fName') sel.name = e.target.value;
+  if (e.target.id === 'fPhone') sel.phone = e.target.value;
+  updateFoot();
+});
+document.addEventListener('click', e => {
+  if (e.target.id === 'bg') { closeBooking(); return; }
+  const el = e.target.closest('button'); if (!el) return;
+  const d = el.dataset;
+  if (d.cat) { cat = d.cat; renderHome(); }
+  else if (d.book) openBooking(d.book);
+  else if ('close' in d) closeBooking();
+  else if (d.doc) { sel.did = d.doc; sel.time = null; renderBody(); }
+  else if (d.day) { sel.date = d.day; sel.time = null; renderBody(); }
+  else if (d.time) { sel.time = d.time; renderBody(); }
+  else if (el.id === 'go') send();
+});
+
+function send() {
+  if (sending) return;
+  sending = true; updateFoot();
+  const payload = JSON.stringify({ service: sel.sid, doctor: sel.did, date: sel.date, time: sel.time, name: sel.name.trim(), phone: sel.phone.trim() });
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+  document.getElementById('flash').classList.add('go');
+  setTimeout(() => {
+    if (tg) tg.sendData(payload);
+    else { alert('Откройте приложение из Telegram, чтобы отправить запись.\n' + payload); document.getElementById('flash').classList.remove('go'); sending = false; updateFoot(); }
+  }, 900);
+}
+
+fetch('clinic.json').then(r => r.json()).then(j => { data = j; renderHome(); })
+  .catch(() => { document.getElementById('list').textContent = 'Не удалось загрузить данные клиники.'; });
+</script>
+</body>
+</html>
