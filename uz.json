@@ -1,0 +1,42 @@
+{
+  "сум": "so'm",
+  "ул. Навои, 12": "Navoiy ko'chasi, 12",
+  "Пн–Сб 08:00–20:00": "Du–Sha 08:00–20:00",
+
+  "Приём врача": "Shifokor qabuli",
+  "Диагностика": "Diagnostika",
+  "Анализы": "Tahlillar",
+
+  "Азизова Малика": "Azizova Malika",
+  "Каримов Рустам": "Karimov Rustam",
+  "Петрова Ирина": "Petrova Irina",
+  "Юсупов Тимур": "Yusupov Timur",
+  "Ким Светлана": "Kim Svetlana",
+
+  "Терапевт": "Terapevt",
+  "Кардиолог": "Kardiolog",
+  "Невролог": "Nevrolog",
+  "Врач УЗИ": "UZI shifokori",
+  "Лаборант": "Laborant",
+
+  "14 лет опыта": "14 yillik tajriba",
+  "18 лет опыта": "18 yillik tajriba",
+  "11 лет опыта": "11 yillik tajriba",
+  "9 лет опыта": "9 yillik tajriba",
+  "Забор крови, без очереди": "Qon olish, navbatsiz",
+
+  "Консультация терапевта": "Terapevt konsultatsiyasi",
+  "Осмотр, назначение обследований и лечения": "Ko'rik, tekshiruv va davolashni tayinlash",
+  "Консультация кардиолога": "Kardiolog konsultatsiyasi",
+  "Осмотр, измерение давления, разбор ЭКГ": "Ko'rik, qon bosimini o'lchash, EKG tahlili",
+  "Консультация невролога": "Nevrolog konsultatsiyasi",
+  "Головные боли, боли в спине, головокружения": "Bosh og'rig'i, bel og'rig'i, bosh aylanishi",
+  "УЗИ брюшной полости": "Qorin bo'shlig'i UZI",
+  "Печень, желчный пузырь, поджелудочная, почки": "Jigar, o't pufagi, oshqozon osti bezi, buyraklar",
+  "ЭКГ с расшифровкой": "EKG va xulosa",
+  "Электрокардиограмма и заключение врача": "Elektrokardiogramma va shifokor xulosasi",
+  "Общий анализ крови": "Umumiy qon tahlili",
+  "Натощак. Результат в Telegram в тот же день": "Och qoringa. Natija shu kuni Telegramda",
+  "Check-up «Базовый»": "Check-up «Bazaviy»",
+  "ОАК, глюкоза, холестерин, печёночные пробы": "UQT, glyukoza, xolesterin, jigar sinamalari"
+}

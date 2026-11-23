@@ -68,12 +68,16 @@
   .flash path { stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw .35s ease-out .3s forwards; }
   @keyframes pop { to { transform: scale(1); } } @keyframes draw { to { stroke-dashoffset: 0; } }
   @media (prefers-reduced-motion: reduce) { .sheet, .bg { transition: none; } }
+  .old { color: var(--muted); font-weight: 600; font-size: 12px; text-decoration: line-through; margin-right: 4px; }
+  .day:disabled { opacity: .35; }
+  .card.off { opacity: .55; }
+  .soldout { font-size: 12px; font-weight: 700; color: var(--muted); }
 </style>
 </head>
 <body>
 <div class="hero">
   <svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true"><circle cx="85" cy="85" r="62" fill="#fff" opacity=".18"/><rect x="62" y="38" width="46" height="94" rx="12" fill="#fff"/><rect x="38" y="62" width="94" height="46" rx="12" fill="#fff"/></svg>
-  <span class="tag">Запись онлайн без звонков</span>
+  <span class="tag" data-t="tag">Запись онлайн без звонков</span>
   <b id="clinicName">Клиника</b>
   <p id="clinicHours"></p>
 </div>
@@ -86,7 +90,7 @@
     <div class="grab"></div>
     <div class="head" id="head"></div>
     <div class="body" id="body"></div>
-    <div class="foot2"><div class="sum" id="sum"></div><button class="go" id="go" disabled>Записаться</button></div>
+    <div class="foot2"><div class="sum" id="sum"></div><button class="go" id="go" data-t="book" disabled>Записаться</button></div>
   </div>
 </div>
 <div class="flash" id="flash" aria-hidden="true"><div class="ok"><svg width="56" height="56" viewBox="0 0 56 56"><path d="M12 29 L24 41 L45 16" fill="none" stroke="#0E9F8E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
@@ -94,6 +98,31 @@
 <script>
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg) { tg.ready(); tg.expand(); }
+
+/* ---------- Язык: ?lang=uz (по умолчанию) или ?lang=ru ---------- */
+const L = new URLSearchParams(location.search).get('lang') === 'ru' ? 'ru' : 'uz';
+const I18N = {
+  uz: {
+    title: 'Shifokorga yozilish', tag: "Qo'ng'iroqsiz onlayn yozilish", book: 'Yozilish', all: 'Hammasi', min: 'daq',
+    doctor: 'Shifokor', date: 'Sana', time: 'Vaqt', yourData: "Ma'lumotlaringiz", namePh: 'Ism va familiya',
+    close: 'Yopish', pick: 'Shifokor, sana va vaqtni tanlang',
+    soldOut: 'Hozircha mavjud emas', promo: 'Barcha xizmatlarga {p}% chegirma',
+    openFromTg: 'Yozilishni yuborish uchun ilovani Telegram orqali oching.', loadFail: "Klinika ma'lumotlarini yuklab bo'lmadi."
+  },
+  ru: {
+    title: 'Запись к врачу', tag: 'Запись онлайн без звонков', book: 'Записаться', all: 'Все', min: 'мин',
+    doctor: 'Врач', date: 'Дата', time: 'Время', yourData: 'Ваши данные', namePh: 'Имя и фамилия',
+    close: 'Закрыть', pick: 'Выберите врача, дату и время',
+    soldOut: 'Пока недоступно', promo: 'Скидка {p}% на все услуги',
+    openFromTg: 'Откройте приложение из Telegram, чтобы отправить запись.', loadFail: 'Не удалось загрузить данные клиники.'
+  }
+};
+const T = k => I18N[L][k];
+let UZ = {};                                   // перевод данных клиники (uz.json): русская строка -> узбекская
+const tr = s => (L === 'uz' && UZ[s]) || s;
+document.documentElement.lang = L;
+document.title = T('title');
+document.querySelectorAll('[data-t]').forEach(el => { el.textContent = T(el.dataset.t); });
 
 const ICONS = {
   doc:   '<path d="M20 8v24M8 20h24" stroke="#0E9F8E" stroke-width="7" stroke-linecap="round"/>',
@@ -103,26 +132,39 @@ const ICONS = {
   drop:  '<path d="M20 6 C20 6 8 19 8 26 A12 12 0 0 0 32 26 C32 19 20 6 20 6Z" fill="#D9363E"/>'
 };
 const icon = k => '<svg width="40" height="40" viewBox="0 0 40 40">' + (ICONS[k] || ICONS.doc) + '</svg>';
-const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
-const MON = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const DOW = L === 'uz' ? ['yak', 'du', 'se', 'chor', 'pay', 'ju', 'sha'] : ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+const MON = L === 'uz'
+  ? ['yanvar','fevral','mart','aprel','may','iyun','iyul','avgust','sentabr','oktabr','noyabr','dekabr']
+  : ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const dayLabel = d => L === 'uz' ? d.getDate() + '-' + MON[d.getMonth()] : d.getDate() + ' ' + MON[d.getMonth()];
 
 let data = null, cat = 'Все', sel = null, sending = false;
 
-const fmt = n => n.toLocaleString('ru-RU') + ' ' + data.currency;
+const fmt = n => n.toLocaleString('ru-RU') + ' ' + tr(data.currency);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const doctor = id => data.doctors.find(d => d.id === id);
+/* Скидка: своя у услуги или общая (та же формула, что в боте) */
+const pct = s => s.discount > 0 ? s.discount : (data.discount || 0);
+const disc = (v, s) => pct(s) > 0 ? Math.floor(v * (100 - pct(s)) / 100) : v;
+const priceHtml = s => pct(s) > 0 ? '<s class="old">' + fmt(s.price) + '</s>' + fmt(disc(s.price, s)) : fmt(s.price);
 const service = id => data.services.find(s => s.id === id);
 const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
-function nextDays() {           // 7 ближайших дней без воскресенья
+// Работает ли врач в этот день: по дням недели (1 = пн ... 7 = вс) и выходным датам
+function works(did, date) {
+  const d = doctor(did), w = new Date(date + 'T00:00:00').getDay() || 7;
+  return (d.days || [1, 2, 3, 4, 5, 6]).includes(w) && !(d.off_dates || []).includes(date);
+}
+function nextDays(s) {          // 7 ближайших дней, когда принимает хотя бы один врач услуги
   const out = [], d = new Date();
-  while (out.length < 7) { if (d.getDay() !== 0) out.push(new Date(d)); d.setDate(d.getDate() + 1); }
+  for (let i = 0; i < 14 && out.length < 7; i++, d.setDate(d.getDate() + 1)) {
+    if (s.doctors.some(id => works(id, iso(d)))) out.push(new Date(d));
+  }
   return out;
 }
-// Для демо «занятые» окна считаем по дате и времени, чтобы выглядело как настоящее расписание.
+// Занятые окна приходят из бота (clinic.json -> busy), без имён пациентов
 function busy(docId, date, time) {
-  let h = 0; for (const ch of docId + date + time) h = (h * 31 + ch.charCodeAt(0)) % 7;
-  return h === 0;
+  return ((data.busy || {})[docId + '|' + date] || []).includes(time);
 }
 function pastToday(date, time) {
   if (date !== iso(new Date())) return false;
@@ -131,20 +173,21 @@ function pastToday(date, time) {
 
 function renderHome() {
   document.getElementById('clinicName').textContent = data.clinic;
-  document.getElementById('clinicHours').textContent = data.hours + '. ' + data.address;
-  document.getElementById('foot').innerHTML = esc(data.address) + '<br>' + esc(data.phone);
+  document.getElementById('clinicHours').textContent = tr(data.hours) + '. ' + tr(data.address);
+  document.getElementById('foot').innerHTML = esc(tr(data.address)) + '<br>' + esc(data.phone);
   const cats = ['Все', ...new Set(data.services.map(s => s.cat))];
-  document.getElementById('chips').innerHTML = cats.map(c => '<button class="chip' + (c === cat ? ' on' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>').join('');
+  document.getElementById('chips').innerHTML = cats.map(c => '<button class="chip' + (c === cat ? ' on' : '') + '" data-cat="' + esc(c) + '">' + esc(c === 'Все' ? T('all') : tr(c)) + '</button>').join('');
   document.getElementById('list').innerHTML = data.services.filter(s => cat === 'Все' || s.cat === cat).map(s =>
-    '<div class="card"><div class="ico">' + icon(s.icon) + '</div><div class="info"><span class="name">' + esc(s.name) + '</span><span class="desc">' + esc(s.desc) + '</span>' +
-    '<div class="row"><span class="price">' + fmt(s.price) + '<small>' + s.duration + ' мин</small></span><button class="book" data-book="' + s.id + '">Записаться</button></div></div></div>').join('');
+    '<div class="card' + (s.off ? ' off' : '') + '"><div class="ico">' + icon(s.icon) + '</div><div class="info"><span class="name">' + esc(tr(s.name)) + '</span><span class="desc">' + esc(tr(s.desc)) + '</span>' +
+    '<div class="row"><span class="price">' + priceHtml(s) + '<small>' + s.duration + ' ' + T('min') + '</small></span>' + (s.off ? '<span class="soldout">' + T('soldOut') + '</span>' : '<button class="book" data-book="' + s.id + '">' + T('book') + '</button>') + '</div></div></div>').join('');
 }
 
 function openBooking(id) {
   const s = service(id);
+  if (s.off) return;
   const prev = sel && sel.name ? { name: sel.name, phone: sel.phone } : { name: '', phone: '' };
   sel = { sid: id, did: s.doctors.length === 1 ? s.doctors[0] : null, date: null, time: null, ...prev };
-  document.getElementById('head').innerHTML = '<div class="t"><b id="sTitle">' + esc(s.name) + '</b><span>' + s.duration + ' мин · ' + fmt(s.price) + '</span></div><button class="x" aria-label="Закрыть" data-close>✕</button>';
+  document.getElementById('head').innerHTML = '<div class="t"><b id="sTitle">' + esc(tr(s.name)) + '</b><span>' + s.duration + ' ' + T('min') + ' · ' + fmt(disc(s.price, s)) + '</span></div><button class="x" aria-label="' + T('close') + '" data-close>✕</button>';
   renderBody();
   const bg = document.getElementById('bg'); bg.classList.add('open'); bg.setAttribute('aria-hidden', 'false');
   document.getElementById('body').scrollTop = 0;
@@ -155,20 +198,20 @@ function renderBody() {
   const s = service(sel.sid), body = document.getElementById('body'), sc = body.scrollTop;
   let h = '';
   if (s.doctors.length > 1) {
-    h += '<div><h3>Врач</h3>' + s.doctors.map(id => { const d = doctor(id);
-      return '<button class="doc' + (sel.did === id ? ' on' : '') + '" data-doc="' + id + '"><b>' + esc(d.name) + '</b><span>' + esc(d.spec) + ' · ' + esc(d.exp) + '</span></button>'; }).join('') + '</div>';
+    h += '<div><h3>' + T('doctor') + '</h3>' + s.doctors.map(id => { const d = doctor(id);
+      return '<button class="doc' + (sel.did === id ? ' on' : '') + '" data-doc="' + id + '"><b>' + esc(tr(d.name)) + '</b><span>' + esc(tr(d.spec)) + ' · ' + esc(tr(d.exp)) + '</span></button>'; }).join('') + '</div>';
   } else {
     const d = doctor(s.doctors[0]);
-    h += '<div><h3>Врач</h3><div class="doc on"><b>' + esc(d.name) + '</b><span>' + esc(d.spec) + ' · ' + esc(d.exp) + '</span></div></div>';
+    h += '<div><h3>' + T('doctor') + '</h3><div class="doc on"><b>' + esc(tr(d.name)) + '</b><span>' + esc(tr(d.spec)) + ' · ' + esc(tr(d.exp)) + '</span></div></div>';
   }
-  h += '<div><h3>Дата</h3><div class="days">' + nextDays().map(d => { const k = iso(d);
-    return '<button class="day' + (sel.date === k ? ' on' : '') + '" data-day="' + k + '"><small>' + DOW[d.getDay()] + '</small><b>' + d.getDate() + '</b></button>'; }).join('') + '</div></div>';
+  h += '<div><h3>' + T('date') + '</h3><div class="days">' + nextDays(s).map(d => { const k = iso(d), ok = !sel.did || works(sel.did, k);
+    return '<button class="day' + (sel.date === k ? ' on' : '') + '"' + (ok ? '' : ' disabled') + ' data-day="' + k + '"><small>' + DOW[d.getDay()] + '</small><b>' + d.getDate() + '</b></button>'; }).join('') + '</div></div>';
   if (sel.did && sel.date) {
-    h += '<div><h3>Время</h3><div class="slots">' + doctor(sel.did).slots.map(t => {
+    h += '<div><h3>' + T('time') + '</h3><div class="slots">' + doctor(sel.did).slots.map(t => {
       const off = busy(sel.did, sel.date, t) || pastToday(sel.date, t);
       return '<button class="slot' + (sel.time === t ? ' on' : '') + '" data-time="' + t + '"' + (off ? ' disabled' : '') + '>' + t + '</button>'; }).join('') + '</div></div>';
   }
-  h += '<div><h3>Ваши данные</h3><input class="fld" id="fName" placeholder="Имя и фамилия" autocomplete="name" maxlength="60" value="' + esc(sel.name) + '">' +
+  h += '<div><h3>' + T('yourData') + '</h3><input class="fld" id="fName" placeholder="' + T('namePh') + '" autocomplete="name" maxlength="60" value="' + esc(sel.name) + '">' +
        '<input class="fld" id="fPhone" type="tel" inputmode="tel" placeholder="+998 90 123-45-67" autocomplete="tel" maxlength="20" value="' + esc(sel.phone) + '"></div>';
   body.innerHTML = h; body.scrollTop = sc;
   updateFoot();
@@ -179,8 +222,8 @@ function updateFoot() {
   const ready = sel.did && sel.date && sel.time && sel.name.trim().length >= 2 && validPhone(sel.phone.trim());
   const dt = sel.date ? new Date(sel.date + 'T00:00:00') : null;
   document.getElementById('sum').textContent = sel.did && sel.date && sel.time
-    ? doctor(sel.did).name + ' · ' + dt.getDate() + ' ' + MON[dt.getMonth()] + ' в ' + sel.time
-    : 'Выберите врача, дату и время';
+    ? tr(doctor(sel.did).name) + ' · ' + dayLabel(dt) + (L === 'uz' ? ', ' : ' в ') + sel.time
+    : T('pick');
   document.getElementById('go').disabled = !ready || sending;
 }
 
@@ -197,7 +240,7 @@ document.addEventListener('click', e => {
   if (d.cat) { cat = d.cat; renderHome(); }
   else if (d.book) openBooking(d.book);
   else if ('close' in d) closeBooking();
-  else if (d.doc) { sel.did = d.doc; sel.time = null; renderBody(); }
+  else if (d.doc) { sel.did = d.doc; sel.time = null; if (sel.date && !works(sel.did, sel.date)) sel.date = null; renderBody(); }
   else if (d.day) { sel.date = d.day; sel.time = null; renderBody(); }
   else if (d.time) { sel.time = d.time; renderBody(); }
   else if (el.id === 'go') send();
@@ -211,12 +254,19 @@ function send() {
   document.getElementById('flash').classList.add('go');
   setTimeout(() => {
     if (tg) tg.sendData(payload);
-    else { alert('Откройте приложение из Telegram, чтобы отправить запись.\n' + payload); document.getElementById('flash').classList.remove('go'); sending = false; updateFoot(); }
+    else { alert(T('openFromTg') + '\n' + payload); document.getElementById('flash').classList.remove('go'); sending = false; updateFoot(); }
   }, 900);
 }
 
-fetch('clinic.json').then(r => r.json()).then(j => { data = j; renderHome(); })
-  .catch(() => { document.getElementById('list').textContent = 'Не удалось загрузить данные клиники.'; });
+Promise.all([
+  fetch('clinic.json?_=' + Date.now(), { cache: 'no-store' }).then(r => r.json()),
+  L === 'uz' ? fetch('uz.json?_=' + Date.now(), { cache: 'no-store' }).then(r => r.json()) : Promise.resolve({})
+]).then(([j, uz]) => {
+  data = j; UZ = uz;
+  if (data.discount > 0) document.querySelector('.hero .tag').textContent = T('promo').replace('{p}', data.discount);
+  renderHome();
+})
+  .catch(() => { document.getElementById('list').textContent = T('loadFail'); });
 </script>
 </body>
 </html>
